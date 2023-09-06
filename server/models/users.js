@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema({
 
@@ -38,8 +40,31 @@ const userSchema = new mongoose.Schema({
         createdAt: Date,
         },
     ] ,
+
+    verified: {
+        type: Boolean,
+        default: false,
+    },
+
     otp: Number,
-    potp_expiry: Date,
+    otp_expiry: Date,
 });
+
+userSchema.pre("save", async function(next){
+    if(!this.isModified("password")) return next();
+
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);;
+    next();
+});
+
+userSchema.methods.getJWTToken = function(){
+    return jwt.sign({_id: this._id}, process.env.JWT_SECRET,{
+        expiresIn: process.env.JWT_COOKIE_EXPIRE,
+    }
+    );
+};
+    
+
 
 export const User = mongoose.model("User", userSchema);
